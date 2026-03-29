@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PARIS DECODED</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Lora:ital,wght@0,400;0,500;1,400&family=Courier+Prime:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#080604">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root {
+  --bg:#080604; --surface:#141009; --card:#1e1810; --card2:#251f15;
+  --gold:#c9a84c; --gold-dim:#8a6f30; --text:#e4d8c0; --muted:#8a7a62;
+  --border:#2e2518; --border-gold:#3d3020;
+  --success:#3d6b3d; --success-text:#7dba7d;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Lora',serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:999;opacity:0.6}
+.screen{display:none;min-height:100vh;animation:fadeIn 0.35s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{filter:drop-shadow(0 0 10px rgba(201,168,76,0.3));transform:scale(1)}50%{filter:drop-shadow(0 0 30px rgba(201,168,76,0.6));transform:scale(1.05)}}
+
+/* SPLASH */
+#screen-splash{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 24px;text-align:center;background:radial-gradient(ellipse at 50% 30%,#1a1208 0%,#080604 70%)}
+.splash-symbol{font-size:52px;margin-bottom:24px;animation:glow 3s ease-in-out infinite}
+.splash-title{font-family:'Cinzel',serif;font-size:38px;font-weight:900;letter-spacing:8px;color:var(--gold);line-height:1;margin-bottom:6px;text-shadow:0 0 40px rgba(201,168,76,0.4)}
+.splash-subtitle{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--muted);margin-bottom:36px}
+.splash-divider{width:80px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);margin:0 auto 26px}
+.splash-desc{font-style:italic;font-size:14px;color:var(--muted);line-height:1.7;max-width:300px;margin-bottom:36px}
+.splash-meta{display:flex;gap:28px;margin-bottom:44px}
+.splash-meta-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+.splash-meta-value{font-family:'Cinzel',serif;font-size:18px;font-weight:600;color:var(--gold)}
+.splash-meta-label{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+.btn-primary{background:linear-gradient(135deg,#2a2010,#1a1408);border:1px solid var(--gold-dim);color:var(--gold);font-family:'Cinzel',serif;font-size:13px;letter-spacing:4px;padding:16px 40px;cursor:pointer;text-transform:uppercase;transition:all 0.2s}
+.btn-primary:active{transform:scale(0.98);background:rgba(201,168,76,0.1)}
+.rules-box{background:var(--card);border:1px solid var(--border-gold);padding:20px;margin-top:28px;width:100%;max-width:340px}
+.rules-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:var(--gold-dim);text-transform:uppercase;margin-bottom:12px}
+.rule-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;font-size:12px;color:var(--muted);line-height:1.5}
+
+/* MAP SCREEN */
+#screen-map{padding-bottom:100px}
+.map-header{padding:52px 20px 14px;background:linear-gradient(180deg,#100c06 0%,transparent 100%);position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.map-header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.page-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--gold);text-transform:uppercase}
+.progress-badge{font-family:'Courier Prime',monospace;font-size:11px;color:var(--muted);background:var(--card);padding:4px 10px;border:1px solid var(--border)}
+.progress-bar-wrap{height:2px;background:var(--border);overflow:hidden;margin-bottom:6px}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold-dim),var(--gold));transition:width 0.6s ease}
+.route-label{font-family:'Courier Prime',monospace;font-size:10px;color:var(--muted);letter-spacing:1px}
+#paris-map{width:100%;height:260px;border-top:1px solid var(--border-gold);border-bottom:1px solid var(--border-gold);margin-bottom:12px}
+.leaflet-popup-content-wrapper{background:var(--card);border:1px solid var(--border-gold);border-radius:0;box-shadow:0 4px 20px rgba(0,0,0,0.6)}
+.leaflet-popup-content-wrapper .leaflet-popup-content{margin:12px 14px}
+.leaflet-popup-tip{background:var(--card)}
+.levels-list{padding:0 16px}
+.level-card{background:var(--card);border:1px solid var(--border);margin-bottom:10px;padding:16px;cursor:pointer;transition:all 0.15s;position:relative;overflow:hidden}
+.level-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--border-gold);transition:background 0.3s}
+.level-card.completed::before{background:var(--success)}
+.level-card.active-level::before{background:var(--gold)}
+.level-card.locked{opacity:0.4;cursor:default}
+.level-card:not(.locked):active{background:var(--card2);transform:scale(0.99)}
+.level-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.level-number{font-family:'Cinzel',serif;font-size:9px;letter-spacing:3px;color:var(--gold-dim);text-transform:uppercase;margin-bottom:3px}
+.level-name{font-family:'Cinzel',serif;font-size:15px;font-weight:600;color:var(--text);line-height:1.2}
+.level-status{font-size:18px;flex-shrink:0;margin-left:8px}
+.level-location{font-family:'Courier Prime',monospace;font-size:11px;color:var(--muted);margin-bottom:6px}
+.level-meta{display:flex;gap:8px;flex-wrap:wrap}
+.level-tag{font-size:10px;color:var(--muted);background:rgba(255,255,255,0.03);border:1px solid var(--border);padding:2px 8px}
+.level-progress-text{font-family:'Courier Prime',monospace;font-size:10px;color:var(--success-text);margin-top:6px}
+
+/* LEVEL SCREEN */
+#screen-level{padding-bottom:120px}
+.level-header{padding:52px 20px 14px;position:sticky;top:0;z-index:10;background:rgba(8,6,4,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border-gold)}
+.back-btn{display:flex;align-items:center;gap:6px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--gold-dim);background:none;border:none;cursor:pointer;padding:0;text-transform:uppercase;margin-bottom:12px}
+.back-btn:active{color:var(--gold)}
+.level-header-inner{display:flex;justify-content:space-between;align-items:flex-start}
+.level-header-num{font-family:'Cinzel',serif;font-size:9px;letter-spacing:3px;color:var(--gold-dim);text-transform:uppercase;margin-bottom:3px}
+.level-header-title{font-family:'Cinzel',serif;font-size:19px;font-weight:700;color:var(--text);line-height:1.2;max-width:210px}
+.timer-badge{background:var(--card2);border:1px solid var(--border-gold);padding:8px 12px;text-align:center;flex-shrink:0}
+.timer-num{font-family:'Courier Prime',monospace;font-size:22px;color:var(--gold);display:block;line-height:1}
+.timer-label{font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;display:block;margin-top:2px}
+.level-body{padding:12px 16px 0}
+
+/* Cards */
+.section-card{background:var(--card);border:1px solid var(--border);margin-bottom:10px;overflow:hidden}
+.section-hdr{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.section-hdr-icon{font-size:15px}
+.section-hdr-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase}
+.section-body{padding:12px 14px}
+
+/* TASKS */
+.task-row{border-bottom:1px solid var(--border)}
+.task-row:last-child{border-bottom:none}
+.task-main{display:flex;align-items:center;gap:10px;padding:12px 14px 10px}
+.task-check-area{display:flex;align-items:center;gap:10px;flex:1;cursor:pointer;-webkit-user-select:none;user-select:none;padding:2px 0}
+.task-check-area:active .task-check{background:rgba(201,168,76,0.08)}
+.task-check{width:24px;height:24px;border:1.5px solid var(--gold-dim);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;border-radius:3px}
+.task-row.done .task-check{background:var(--success);border-color:var(--success)}
+.task-checkmark{font-size:14px;color:var(--success-text);opacity:0;transform:scale(0);transition:all 0.2s}
+.task-row.done .task-checkmark{opacity:1;transform:scale(1)}
+.task-emoji{font-size:18px;flex-shrink:0}
+.task-text{font-size:13px;color:var(--text);line-height:1.45;flex:1;transition:color 0.2s}
+.task-row.done .task-text{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--muted)}
+.task-cam-btn{background:none;border:1px solid var(--border-gold);color:var(--muted);font-size:16px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;border-radius:3px;transition:all 0.15s}
+.task-cam-btn:active{background:rgba(201,168,76,0.12);border-color:var(--gold-dim)}
+.task-cam-btn.has-photo{border-color:var(--gold-dim);color:var(--gold);background:rgba(201,168,76,0.06)}
+.task-photo-wrap{padding:0 14px 12px;display:none}
+.task-photo-wrap.visible{display:block}
+.task-photo-inner{position:relative;display:block}
+.task-photo-img{width:100%;max-height:240px;object-fit:cover;display:block;border:1px solid var(--border-gold);cursor:pointer}
+.task-photo-del{position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.78);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:12px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:2px}
+.task-photo-label{font-family:'Courier Prime',monospace;font-size:9px;color:var(--gold-dim);letter-spacing:1px;margin-top:5px;text-transform:uppercase}
+
+/* BONUS */
+.bonus-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-user-select:none;user-select:none;transition:background 0.15s}
+.bonus-row:last-child{border-bottom:none}
+.bonus-row:active{background:var(--card2)}
+.bonus-box{width:18px;height:18px;border:1px solid var(--border-gold);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--gold-dim);margin-top:2px;border-radius:2px;transition:all 0.2s}
+.bonus-row.done .bonus-box{background:var(--gold-dim)}
+.bonus-text{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5;flex:1}
+.bonus-row.done .bonus-text{text-decoration:line-through;text-decoration-color:var(--gold-dim);color:var(--gold-dim)}
+
+/* INTERPRETATION */
+.interp-box{background:rgba(201,168,76,0.04);border-left:2px solid var(--gold-dim);padding:12px 14px;margin-bottom:10px}
+.interp-label{font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--gold-dim);text-transform:uppercase;margin-bottom:6px}
+.interp-text{font-style:italic;font-size:13px;color:var(--text);line-height:1.7}
+
+/* NOTES */
+.notes-ta{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Courier Prime',monospace;font-size:12px;line-height:1.7;padding:12px;width:100%;resize:none;min-height:90px;outline:none}
+.notes-ta::placeholder{color:var(--muted);font-style:italic}
+.notes-ta:focus{border-color:var(--gold-dim)}
+.notes-saved{font-family:'Courier Prime',monospace;font-size:10px;color:var(--success-text);text-align:right;padding:4px 14px 8px;opacity:0;transition:opacity 0.3s}
+.notes-saved.show{opacity:1}
+
+/* COMPLETE */
+.complete-btn{display:block;width:100%;margin:0 0 10px;background:linear-gradient(135deg,var(--success),#2d4f2d);border:1px solid #4a7a4a;color:var(--success-text);font-family:'Cinzel',serif;font-size:12px;letter-spacing:3px;padding:16px;cursor:pointer;text-transform:uppercase;transition:all 0.2s}
+.complete-btn:active{transform:scale(0.99);opacity:0.9}
+.complete-btn:disabled{background:var(--card);border-color:var(--border);color:var(--muted);cursor:not-allowed}
+.complete-btn.is-done{background:var(--card);border-color:var(--success);color:var(--success-text);cursor:default}
+
+/* SYNTHESIS */
+#screen-synthesis{padding:52px 20px 100px}
+.synth-hdr{text-align:center;padding-bottom:24px;border-bottom:1px solid var(--border-gold);margin-bottom:22px}
+.synth-symbol{font-size:40px;margin-bottom:12px;filter:drop-shadow(0 0 15px rgba(201,168,76,0.4))}
+.synth-title{font-family:'Cinzel',serif;font-size:22px;font-weight:700;color:var(--gold);letter-spacing:4px;margin-bottom:6px}
+.synth-sub{font-size:12px;color:var(--muted);font-style:italic}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.stat-box{background:var(--card);border:1px solid var(--border);padding:12px;text-align:center}
+.stat-num{font-family:'Cinzel',serif;font-size:24px;font-weight:700;color:var(--gold);display:block}
+.stat-label{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px;display:block}
+.synth-q{margin-bottom:18px}
+.synth-q-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--gold-dim);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.synth-q-label::after{content:'';flex:1;height:1px;background:var(--border-gold)}
+.synth-input{background:var(--card);border:1px solid var(--border);color:var(--text);font-family:'Courier Prime',monospace;font-size:13px;line-height:1.6;padding:12px;width:100%;min-height:80px;resize:none;outline:none}
+.synth-input:focus{border-color:var(--gold-dim)}
+.synth-input::placeholder{color:var(--muted);font-style:italic}
+.hard-box{background:rgba(122,28,28,0.15);border:1px solid #4a1f1f;padding:16px;margin-bottom:18px}
+.hard-label{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;color:#b05050;text-transform:uppercase;margin-bottom:8px}
+.hard-text{font-size:12px;color:var(--muted);font-style:italic;line-height:1.6;margin-bottom:12px}
+.what-box{background:var(--card);border:1px solid var(--border-gold);padding:16px;margin-bottom:20px}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,6,4,0.96);border-top:1px solid var(--border-gold);display:flex;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 0;background:none;border:none;cursor:pointer;gap:4px}
+.nav-btn:active{background:rgba(201,168,76,0.05)}
+.nav-icon{font-size:20px}
+.nav-label{font-family:'Cinzel',serif;font-size:8px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;transition:color 0.2s}
+.nav-btn.active .nav-label{color:var(--gold)}
+
+/* OVERLAYS */
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--card2);border:1px solid var(--gold-dim);padding:12px 22px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;z-index:400;transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);white-space:nowrap;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.complete-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:300;text-align:center;padding:40px}
+.complete-overlay.show{display:flex;animation:fadeIn 0.3s ease}
+.complete-icon{font-size:60px;margin-bottom:20px;animation:glow 2s ease-in-out infinite}
+.complete-title{font-family:'Cinzel',serif;font-size:28px;font-weight:700;color:var(--gold);letter-spacing:4px;margin-bottom:8px}
+.complete-sub{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:28px;line-height:1.6;white-space:pre-line}
+.complete-next{background:var(--card);border:1px solid var(--gold-dim);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;padding:16px 36px;cursor:pointer;text-transform:uppercase;margin-bottom:12px}
+.complete-back{background:none;border:none;color:var(--muted);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;padding:12px;cursor:pointer;text-transform:uppercase}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.97);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center}
+.lightbox.open{display:flex;animation:fadeIn 0.2s ease}
+.lightbox-img{max-width:100%;max-height:80vh;object-fit:contain;border:1px solid var(--border-gold)}
+.lightbox-close{position:absolute;top:52px;right:20px;background:var(--card2);border:1px solid var(--border-gold);color:var(--gold);font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;padding:10px 16px;cursor:pointer;text-transform:uppercase}
+.lightbox-lbl{position:absolute;bottom:36px;font-family:'Courier Prime',monospace;font-size:11px;color:var(--muted)}
+#photo-file-input{display:none}
+
+/* Leaflet marker */
+.lv-marker{background:var(--card);border:2px solid var(--gold-dim);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;box-shadow:0 0 10px rgba(201,168,76,0.3)}
+.lv-marker.active{border-color:var(--gold);box-shadow:0 0 14px rgba(201,168,76,0.7)}
+.lv-marker.done{background:var(--success);border-color:var(--success-text);color:var(--success-text)}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="complete-overlay" id="complete-overlay">
+  <div class="complete-icon" id="c-icon">⚜️</div>
+  <div class="complete-title">LEVEL COMPLETE</div>
+  <div class="complete-sub" id="c-sub"></div>
+  <button class="complete-next" id="c-next" onclick="onCompleteNext()">Continue →</button>
+  <button class="complete-back" onclick="dismissComplete()">Stay & Observe</button>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img class="lightbox-img" id="lb-img" src="" alt="">
+  <button class="lightbox-close" onclick="closeLightbox()">✕ Close</button>
+  <div class="lightbox-lbl" id="lb-lbl"></div>
+</div>
+
+<input type="file" id="photo-file-input" accept="image/*" capture="environment">
+
+<!-- SPLASH -->
+<div class="screen active" id="screen-splash">
+  <div class="splash-symbol">🧭</div>
+  <div class="splash-title">PARIS<br>DECODED</div>
+  <div class="splash-subtitle">Urban Symbol Intelligence</div>
+  <div class="splash-divider" style="width:80px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);margin:0 auto 26px"></div>
+  <div class="splash-desc">You won't visit Paris today.<br>You'll interrogate it.</div>
+  <div class="splash-meta">
+    <div class="splash-meta-item"><span class="splash-meta-value">6</span><span class="splash-meta-label">Levels</span></div>
+    <div class="splash-meta-item"><span class="splash-meta-value">2h30</span><span class="splash-meta-label">Duration</span></div>
+    <div class="splash-meta-item"><span class="splash-meta-value">Île</span><span class="splash-meta-label">Zone</span></div>
+  </div>
+  <button class="btn-primary" onclick="startGame()">BEGIN MISSION</button>
+  <div class="rules-box">
+    <div class="rules-title">Field Rules</div>
+    <div class="rule-item"><span style="font-size:14px;flex-shrink:0">❗</span><span>No Google during the walk</span></div>
+    <div class="rule-item"><span style="font-size:14px;flex-shrink:0">📸</span><span>Photograph each finding in-place</span></div>
+    <div class="rule-item"><span style="font-size:14px;flex-shrink:0">🧠</span><span>Always ask: why is this here?</span></div>
+    <div class="rule-item"><span style="font-size:14px;flex-shrink:0">🎯</span><span>Complete all tasks to unlock next level</span></div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div class="screen" id="screen-map">
+  <div class="map-header">
+    <div class="map-header-top">
+      <div class="page-title">Mission Map</div>
+      <div class="progress-badge" id="map-badge">0 / 6</div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="map-bar" style="width:0%"></div></div>
+    <div class="route-label">📍 Pont Neuf → Île de la Cité → Square du Vert-Galant</div>
+  </div>
+  <div id="paris-map"></div>
+  <div class="levels-list" id="levels-list"></div>
+</div>
+
+<!-- LEVEL -->
+<div class="screen" id="screen-level">
+  <div class="level-header">
+    <button class="back-btn" onclick="showScreen('map');setActiveNav('map')">← Map</button>
+    <div class="level-header-inner">
+      <div>
+        <div class="level-header-num" id="lh-num">LEVEL 1</div>
+        <div class="level-header-title" id="lh-title">Faces of the City</div>
+      </div>
+      <div class="timer-badge">
+        <span class="timer-num" id="lh-time">40</span>
+        <span class="timer-label">min</span>
+      </div>
+    </div>
+  </div>
+  <div class="level-body" id="level-body"></div>
+</div>
+
+<!-- SYNTHESIS -->
+<div class="screen" id="screen-synthesis">
+  <div class="synth-hdr">
+    <div class="synth-symbol">⚗️</div>
+    <div class="synth-title">SYNTHESIS</div>
+    <div class="synth-sub">Square du Vert-Galant — Final Observation Point</div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-box"><span class="stat-num" id="st-tasks">0</span><span class="stat-label">Tasks Done</span></div>
+    <div class="stat-box"><span class="stat-num" id="st-levels">0</span><span class="stat-label">Levels Complete</span></div>
+    <div class="stat-box"><span class="stat-num" id="st-bonus">0</span><span class="stat-label">Bonus Found</span></div>
+    <div class="stat-box"><span class="stat-num" id="st-photos">0</span><span class="stat-label">Photos Taken</span></div>
+  </div>
+  <div class="synth-q"><div class="synth-q-label">What symbol appeared most?</div><textarea class="synth-input" id="syn-1" placeholder="Write what kept repeating across locations…" oninput="saveSyn()"></textarea></div>
+  <div class="synth-q"><div class="synth-q-label">Which place felt most powerful?</div><textarea class="synth-input" id="syn-2" placeholder="Where did you feel the architecture working on you…" oninput="saveSyn()"></textarea></div>
+  <div class="synth-q"><div class="synth-q-label">Designed or chaotic?</div><textarea class="synth-input" id="syn-3" placeholder="Did the city feel intentional, accidental, or both…" oninput="saveSyn()"></textarea></div>
+  <div class="hard-box">
+    <div class="hard-label">⚡ Hard Mode — Optional</div>
+    <div class="hard-text">Build one personal theory about Paris based on what you observed. Or connect one symbol across 3 different locations.</div>
+    <textarea class="synth-input" id="syn-hard" placeholder="My theory: …" oninput="saveSyn()" style="min-height:120px"></textarea>
+  </div>
+  <div class="what-box">
+    <div class="interp-label" style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--gold-dim);text-transform:uppercase;margin-bottom:10px">What you just did</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.8;font-style:italic">
+      You didn't "visit" Paris. You performed visual data collection, pattern classification, and hypothesis generation.
+      <br><br>This is <span style="color:var(--text);font-style:normal">scientific thinking applied to urban space.</span>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav" id="bottom-nav" style="display:none">
+  <button class="nav-btn active" id="nav-map" onclick="showScreen('map');setActiveNav('map')">
+    <span class="nav-icon">🗺</span><span class="nav-label">Map</span>
+  </button>
+  <button class="nav-btn" id="nav-field" onclick="openCurrentLevel();setActiveNav('field')">
+    <span class="nav-icon">🔍</span><span class="nav-label">Field</span>
+  </button>
+  <button class="nav-btn" id="nav-synthesis" onclick="showScreen('synthesis');setActiveNav('synthesis')">
+    <span class="nav-icon">⚗️</span><span class="nav-label">Synthesis</span>
+  </button>
+</div>
+
+<script>
+const LEVELS = [
+  { id:0, num:"LEVEL 1", name:"Faces of the City", location:"📍 Pont Neuf", emoji:"🎭", time:"30–40", tags:["Observation","Classification"], lat:48.8580, lng:2.3411,
+    mission:"Find and classify mascarons — the carved stone faces embedded in the bridge.",
+    tasks:[{emoji:"😐",text:"Find a calm / noble face"},{emoji:"😈",text:"Find a grotesque / distorted face"},{emoji:"👑",text:"Find a symbolic face (king, myth, deity?)"},{emoji:"😐",text:"Find a 2nd calm / noble face"},{emoji:"😈",text:"Find a 2nd grotesque face"},{emoji:"👑",text:"Find a 2nd symbolic face"},{emoji:"🔢",text:"Reach 10 different faces total"}],
+    bonus:["Are any faces repeated? (they shouldn't be — look carefully)","Do expressions change depending on their position on the bridge?"],
+    interpretation:"Are these faces protecting the bridge, mocking people crossing, or documenting the faces of society in stone? What does the range of expressions suggest about the sculptor's intent?" },
+  { id:1, num:"LEVEL 2", name:"Power & Control", location:"📍 Palais de Justice", emoji:"⚖️", time:"25–30", tags:["Symbolism","Authority"], lat:48.8554, lng:2.3453,
+    mission:"Identify symbols of authority embedded in the architecture and figures around the Palais de Justice.",
+    tasks:[{emoji:"⚖️",text:"Find the first set of scales (Justice symbol)"},{emoji:"⚖️",text:"Find a second set of scales"},{emoji:"🗡️",text:"Find a sword — symbol of power to enforce"},{emoji:"👁️",text:"Find a 'watching' figure — eyes that observe"}],
+    bonus:["Is Justice depicted blindfolded, or can she see? What does that imply?","Are the symbols aggressive (domination) or balanced (fairness)? Or both?"],
+    interpretation:"Is justice presented here as neutral… or dominant? Notice whether the architecture feels inviting to citizens, or designed to intimidate. Who is this building speaking to?" },
+  { id:2, num:"LEVEL 3", name:"Sacred vs Monstrous", location:"📍 Notre-Dame Cathedral", emoji:"🐉", time:"30–40", tags:["Architecture","Sacred Symbols"], lat:48.8530, lng:2.3499,
+    mission:"Decode the gargoyles and chimeras of Notre-Dame. Why does a sacred building display monsters?",
+    tasks:[{emoji:"🐉",text:"Find the first monster / gargoyle"},{emoji:"🐉",text:"Find a second distinct monster"},{emoji:"🐦",text:"Find an animal figure (not a monster)"},{emoji:"😱",text:"Find the most disturbing figure on the building"}],
+    bonus:["Are the creatures looking outward (watching the city) or downward (watching visitors)?","Do they face toward the city, or toward the church itself?"],
+    interpretation:"Why would a sacred place display monsters? Gargoyles drain water, but chimeras serve no functional purpose. Their presence is purely psychological." },
+  { id:3, num:"LEVEL 4", name:"Vertical Theology", location:"📍 Sainte-Chapelle (exterior)", emoji:"⬆️", time:"15–20", tags:["Gothic","Intention"], lat:48.8554, lng:2.3450,
+    mission:"Understand Gothic architectural intention. The building is trying to do something to you.",
+    tasks:[{emoji:"⬆️",text:"Identify the vertical lines pulling your eye upward"},{emoji:"🔁",text:"Find 3 repeating patterns (arches, spires, windows)"},{emoji:"🪟",text:"Identify the symmetry axis — is it perfect?"},{emoji:"👁️",text:"Stand back and let your gaze move naturally — where does it go?"}],
+    bonus:["Does the building feel 'light' or 'heavy'? How does stone feel weightless?","Does your eye travel upward without you trying?"],
+    interpretation:"Gothic architecture is a machine for redirecting attention. Every line, ratio and proportion was calibrated to force your gaze toward heaven. You're experiencing engineered awe." },
+  { id:4, num:"LEVEL 5", name:"Hidden Street Layer", location:"📍 Small streets of Île de la Cité", emoji:"🐾", time:"30–40", tags:["Urban Archaeology","Traces"], lat:48.8545, lng:2.3475,
+    mission:"Find everyday hidden symbols — the traces of past lives still embedded in stone.",
+    tasks:[{emoji:"🐾",text:"Find an animal carved on a door or wall"},{emoji:"🐾",text:"Find a second distinct animal symbol"},{emoji:"🔨",text:"Find an old shop sign or guild mark"},{emoji:"🏷️",text:"Find an engraved date on a building"}],
+    bonus:["Find a detail that feels completely 'out of place' — from the wrong era","Note the sharpest contrast between something old and something modern"],
+    interpretation:"What traces of past lives still remain here? The stones beneath your feet predate France as a concept. What does it mean that they carry marks from hands now centuries gone?" },
+  { id:5, num:"FINAL LEVEL", name:"Isolation Point", location:"📍 Square du Vert-Galant", emoji:"🌅", time:"15–20", tags:["Synthesis","Reflection"], lat:48.8572, lng:2.3403,
+    mission:"Walk to the tip of the island. Sit. Let everything you've collected settle into a theory.",
+    tasks:[{emoji:"🪑",text:"Reach Square du Vert-Galant and find a spot to sit"},{emoji:"🌊",text:"Watch the Seine for at least 5 minutes without your phone"},{emoji:"🧠",text:"Identify the single symbol you saw most frequently today"},{emoji:"📝",text:"Open Synthesis and complete your field notes"}],
+    bonus:["From here, look back at the city: does it look designed or organic?","What is the emotional register of this spot vs everything you've seen?"],
+    interpretation:"You've spent the day reading a city as a text. The island ends here, in a garden named after a king who lost his power. The Seine splits around you. You are at the beginning, and the end, of the same story." },
+];
+
+// ── STATE ──────────────────────────────────────────────
+let state = {
+  started: false,
+  currentLevel: null,
+  levels: LEVELS.map(l => ({
+    completed: false,
+    tasks: new Array(l.tasks.length).fill(false),
+    bonus: new Array(l.bonus.length).fill(false),
+    taskPhotos: new Array(l.tasks.length).fill(null),
+    notes: "",
+  })),
+  synthesis: { s1:"", s2:"", s3:"", hard:"" },
+};
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('paris-decoded-v3');
+    if (raw) {
+      const p = JSON.parse(raw);
+      state = Object.assign(state, p);
+      state.levels.forEach((ls, i) => {
+        if (!ls.taskPhotos) ls.taskPhotos = new Array(LEVELS[i].tasks.length).fill(null);
+        while (ls.taskPhotos.length < LEVELS[i].tasks.length) ls.taskPhotos.push(null);
+      });
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  try { localStorage.setItem('paris-decoded-v3', JSON.stringify(state)); } catch(e) {}
+}
+
+// ── NAVIGATION ─────────────────────────────────────────
+let leafletMap = null;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  window.scrollTo(0, 0);
+  if (id === 'map') { renderMap(); initMap(); }
+  if (id === 'synthesis') renderSynthesis();
+}
+
+function setActiveNav(id) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('nav-' + id);
+  if (el) el.classList.add('active');
+}
+
+function startGame() {
+  state.started = true;
+  saveState();
+  document.getElementById('bottom-nav').style.display = 'flex';
+  showScreen('map');
+  setActiveNav('map');
+}
+
+// ── LEAFLET MAP ────────────────────────────────────────
+function initMap() {
+  const container = document.getElementById('paris-map');
+  if (leafletMap) { leafletMap.invalidateSize(); refreshMarkers(); return; }
+
+  leafletMap = L.map('paris-map', {
+    center: [48.8553, 2.3452], zoom: 15,
+    zoomControl: false, attributionControl: false,
+  });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(leafletMap);
+
+  const coords = LEVELS.map(l => [l.lat, l.lng]);
+  L.polyline(coords, { color:'#c9a84c', weight:2, opacity:0.65, dashArray:'5,7' }).addTo(leafletMap);
+
+  refreshMarkers();
+}
+
+function refreshMarkers() {
+  if (!leafletMap) return;
+  leafletMap.eachLayer(lay => { if (lay._pdMarker) leafletMap.removeLayer(lay); });
+
+  LEVELS.forEach((lv, i) => {
+    const ls = state.levels[i];
+    const isDone = ls.completed;
+    const isActive = !isDone && (i === 0 || state.levels[i-1].completed);
+    const cls = 'lv-marker' + (isDone ? ' done' : isActive ? ' active' : '');
+
+    const icon = L.divIcon({
+      html: `<div class="${cls}">${i+1}</div>`,
+      className: '', iconSize:[28,28], iconAnchor:[14,14]
+    });
+
+    const marker = L.marker([lv.lat, lv.lng], { icon }).addTo(leafletMap);
+    marker._pdMarker = true;
+
+    const popupHtml = `<div style="font-family:'Cinzel',serif;font-size:11px;color:#c9a84c;letter-spacing:2px">${lv.num}</div>
+      <div style="font-family:'Lora',serif;font-size:13px;color:#e4d8c0;margin-top:4px">${lv.emoji} ${lv.name}</div>
+      <div style="font-family:'Courier Prime',monospace;font-size:10px;color:#8a7a62;margin-top:4px">${lv.location.replace('📍 ','')}</div>
+      ${!isDone&&!isActive ? '<div style="font-size:10px;color:#7a5a2a;margin-top:6px;font-style:italic">Complete previous level to unlock</div>' : ''}`;
+
+    marker.bindPopup(popupHtml, { className:'paris-popup', closeButton:false });
+
+    if (!isDone && !isActive) return;
+    marker.on('click', () => setTimeout(() => openLevel(i), 350));
+  });
+}
+
+// ── MAP LIST ───────────────────────────────────────────
+function renderMap() {
+  const done = state.levels.filter(l => l.completed).length;
+  document.getElementById('map-badge').textContent = done + ' / 6';
+  document.getElementById('map-bar').style.width = (done / 6 * 100) + '%';
+
+  const container = document.getElementById('levels-list');
+  container.innerHTML = '';
+
+  LEVELS.forEach((lv, i) => {
+    const ls = state.levels[i];
+    const isCompleted = ls.completed;
+    const isActive = !isCompleted && (i === 0 || state.levels[i-1].completed);
+    const isLocked = !isCompleted && !isActive;
+    const tasksDone = ls.tasks.filter(Boolean).length;
+
+    const card = document.createElement('div');
+    card.className = 'level-card' + (isCompleted ? ' completed' : isActive ? ' active-level' : isLocked ? ' locked' : '');
+
+    const statusIcon = isCompleted ? '✅' : isActive ? '🔍' : '🔒';
+    card.innerHTML = `
+      <div class="level-card-top">
+        <div><div class="level-number">${lv.num}</div><div class="level-name">${lv.emoji} ${lv.name}</div></div>
+        <div class="level-status">${statusIcon}</div>
+      </div>
+      <div class="level-location">${lv.location}</div>
+      <div class="level-meta"><span class="level-tag">⏱ ${lv.time} min</span>${lv.tags.map(t=>`<span class="level-tag">${t}</span>`).join('')}</div>
+      ${(isActive||isCompleted)?`<div class="level-progress-text">${tasksDone}/${lv.tasks.length} tasks${isCompleted?' · Complete':''}</div>`:''}
+    `;
+    if (!isLocked) card.addEventListener('click', () => openLevel(i));
+    container.appendChild(card);
+  });
+}
+
+// ── LEVEL SCREEN ───────────────────────────────────────
+function openCurrentLevel() {
+  let target = 0;
+  for (let i = 0; i < LEVELS.length; i++) {
+    if (!state.levels[i].completed) { target = i; break; }
+    if (i === LEVELS.length - 1) target = i;
+  }
+  openLevel(target);
+  setActiveNav('field');
+}
+
+// Utility: create element
+function mk(tag, cls) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  return e;
+}
+function sHdr(icon, title) {
+  const h = mk('div','section-hdr');
+  const i = mk('span','section-hdr-icon'); i.textContent = icon;
+  const t = mk('span','section-hdr-title'); t.textContent = title;
+  h.appendChild(i); h.appendChild(t); return h;
+}
+
+function openLevel(idx) {
+  state.currentLevel = idx;
+  const lv = LEVELS[idx];
+  const ls = state.levels[idx];
+
+  document.getElementById('lh-num').textContent = lv.num;
+  document.getElementById('lh-title').textContent = lv.name;
+  document.getElementById('lh-time').textContent = lv.time;
+
+  const body = document.getElementById('level-body');
+  body.innerHTML = '';
+
+  // Location
+  const locCard = mk('div','section-card'); locCard.style.marginBottom='10px';
+  locCard.appendChild(sHdr('📍','Location'));
+  const lb = mk('div','section-body');
+  const lLoc = mk('div',''); lLoc.style.cssText='font-family:Courier Prime,monospace;font-size:13px'; lLoc.textContent=lv.location; lb.appendChild(lLoc);
+  const lMis = mk('div',''); lMis.style.cssText='font-size:12px;color:var(--muted);margin-top:8px;font-style:italic'; lMis.textContent=lv.mission; lb.appendChild(lMis);
+  locCard.appendChild(lb); body.appendChild(locCard);
+
+  // Tasks
+  const taskCard = mk('div','section-card'); taskCard.style.marginBottom='10px';
+  taskCard.appendChild(sHdr('🎯','Mission Tasks — tap checkbox · 📷 to photograph'));
+  lv.tasks.forEach((task, ti) => taskCard.appendChild(buildTaskRow(idx, ti, task, ls)));
+  body.appendChild(taskCard);
+
+  // Bonus
+  const bonusCard = mk('div','section-card'); bonusCard.style.marginBottom='10px';
+  bonusCard.appendChild(sHdr('🔍','Bonus Observations'));
+  lv.bonus.forEach((b, bi) => {
+    const row = mk('div','bonus-row' + (ls.bonus[bi] ? ' done' : '')); row.dataset.bi = bi;
+    const box = mk('div','bonus-box'); box.textContent = ls.bonus[bi] ? '✓' : '';
+    const txt = mk('span','bonus-text'); txt.textContent = b;
+    row.appendChild(box); row.appendChild(txt);
+    row.addEventListener('click', () => toggleBonus(idx, bi));
+    bonusCard.appendChild(row);
+  });
+  body.appendChild(bonusCard);
+
+  // Interpretation
+  const ib = mk('div','interp-box'); ib.style.marginBottom='10px';
+  const il = mk('div','interp-label'); il.textContent='🧠 Interpret'; ib.appendChild(il);
+  const it = mk('div','interp-text'); it.textContent=lv.interpretation; ib.appendChild(it);
+  body.appendChild(ib);
+
+  // Notes
+  const notesCard = mk('div','section-card'); notesCard.style.marginBottom='10px';
+  notesCard.appendChild(sHdr('📓','Field Notes'));
+  const ta = mk('textarea','notes-ta');
+  ta.placeholder='Write what you observe, feel, or hypothesize here…';
+  ta.value = ls.notes || '';
+  ta.addEventListener('input', () => { state.levels[idx].notes = ta.value; saveState(); showSaved(); });
+  notesCard.appendChild(ta);
+  const savedInd = mk('div','notes-saved'); savedInd.id='notes-saved'; savedInd.textContent='✓ Saved';
+  notesCard.appendChild(savedInd);
+  body.appendChild(notesCard);
+
+  // Complete button
+  const allDone = ls.tasks.every(Boolean);
+  const btn = mk('button','complete-btn' + (ls.completed ? ' is-done' : ''));
+  btn.id = 'complete-btn';
+  if (ls.completed) {
+    btn.textContent = '✅ Level Complete';
+    btn.disabled = false;
+  } else {
+    btn.disabled = !allDone;
+    btn.textContent = allDone ? 'Mark Level Complete ✓' : `Tick all ${lv.tasks.length} tasks above to unlock`;
+    btn.addEventListener('click', () => completeLevel(idx));
+  }
+  body.appendChild(btn);
+
+  showScreen('level');
+  setActiveNav('field');
+}
+
+function showSaved() {
+  const ind = document.getElementById('notes-saved');
+  if (!ind) return;
+  ind.classList.add('show');
+  clearTimeout(ind._t);
+  ind._t = setTimeout(() => ind.classList.remove('show'), 1500);
+}
+
+// ── TASK ROW (DOM-only, no innerHTML overwriting) ──────
+function buildTaskRow(levelIdx, ti, task, ls) {
+  const isDone = ls.tasks[ti];
+  const hasPhoto = !!ls.taskPhotos[ti];
+
+  const row = mk('div','task-row' + (isDone ? ' done' : ''));
+  row.id = `tr-${levelIdx}-${ti}`;
+
+  // Main line
+  const main = mk('div','task-main');
+
+  // Check area (tap to toggle)
+  const checkArea = mk('div','task-check-area');
+  const check = mk('div','task-check');
+  const chk = mk('span','task-checkmark'); chk.textContent='✓'; check.appendChild(chk);
+  const emoji = mk('span','task-emoji'); emoji.textContent=task.emoji;
+  const txt = mk('span','task-text'); txt.textContent=task.text;
+  checkArea.appendChild(check); checkArea.appendChild(emoji); checkArea.appendChild(txt);
+  checkArea.addEventListener('click', (e) => { e.stopPropagation(); toggleTask(levelIdx, ti); });
+
+  // Camera button
+  const cam = mk('button','task-cam-btn' + (hasPhoto ? ' has-photo' : ''));
+  cam.textContent='📷';
+  cam.title = hasPhoto ? 'Replace photo' : 'Take photo for this task';
+  cam.addEventListener('click', (e) => { e.stopPropagation(); triggerTaskCam(levelIdx, ti); });
+
+  main.appendChild(checkArea); main.appendChild(cam);
+  row.appendChild(main);
+
+  // Photo slot (below task)
+  const photoWrap = mk('div','task-photo-wrap' + (hasPhoto ? ' visible' : ''));
+  photoWrap.id = `tp-${levelIdx}-${ti}`;
+  if (hasPhoto) fillPhotoWrap(photoWrap, levelIdx, ti, ls.taskPhotos[ti]);
+  row.appendChild(photoWrap);
+
+  return row;
+}
+
+function fillPhotoWrap(wrap, levelIdx, ti, src) {
+  wrap.innerHTML = '';
+  const inner = mk('div','task-photo-inner');
+  const img = mk('img','task-photo-img'); img.src=src; img.alt='Evidence';
+  img.addEventListener('click', () => openLightbox(src, `Level ${levelIdx+1} · Task ${ti+1}`));
+
+  const del = mk('button','task-photo-del'); del.textContent='✕';
+  del.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (confirm('Delete this photo?')) {
+      state.levels[levelIdx].taskPhotos[ti] = null;
+      saveState();
+      const w = document.getElementById(`tp-${levelIdx}-${ti}`);
+      if (w) { w.classList.remove('visible'); w.innerHTML=''; }
+      const c = document.querySelector(`#tr-${levelIdx}-${ti} .task-cam-btn`);
+      if (c) c.classList.remove('has-photo');
+      showToast('Photo removed');
+    }
+  });
+
+  const lbl = mk('div','task-photo-label'); lbl.textContent=`Evidence · Task ${ti+1}`;
+  inner.appendChild(img); inner.appendChild(del);
+  wrap.appendChild(inner); wrap.appendChild(lbl);
+}
+
+// ── TOGGLE ─────────────────────────────────────────────
+function toggleTask(levelIdx, ti) {
+  const ls = state.levels[levelIdx];
+  ls.tasks[ti] = !ls.tasks[ti];
+  saveState();
+
+  const row = document.getElementById(`tr-${levelIdx}-${ti}`);
+  if (row) row.classList.toggle('done', ls.tasks[ti]);
+
+  const allDone = ls.tasks.every(Boolean);
+  const btn = document.getElementById('complete-btn');
+  if (btn && !ls.completed) {
+    btn.disabled = !allDone;
+    btn.textContent = allDone ? 'Mark Level Complete ✓' : `Tick all ${LEVELS[levelIdx].tasks.length} tasks above to unlock`;
+  }
+  if (ls.tasks[ti]) showToast('Task recorded ✓');
+}
+
+function toggleBonus(levelIdx, bi) {
+  const ls = state.levels[levelIdx];
+  ls.bonus[bi] = !ls.bonus[bi];
+  saveState();
+  document.querySelectorAll('.bonus-row').forEach(r => {
+    if (parseInt(r.dataset.bi) === bi) {
+      r.classList.toggle('done', ls.bonus[bi]);
+      r.querySelector('.bonus-box').textContent = ls.bonus[bi] ? '✓' : '';
+    }
+  });
+  if (ls.bonus[bi]) showToast('Bonus noted ✓');
+}
+
+// ── CAMERA ─────────────────────────────────────────────
+function triggerTaskCam(levelIdx, ti) {
+  const input = document.getElementById('photo-file-input');
+  input.onchange = null; input.value = '';
+  input.onchange = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      compressImg(ev.target.result, 900, 0.75, (compressed) => {
+        state.levels[levelIdx].taskPhotos[ti] = compressed;
+        saveState();
+        const wrap = document.getElementById(`tp-${levelIdx}-${ti}`);
+        if (wrap) { wrap.classList.add('visible'); fillPhotoWrap(wrap, levelIdx, ti, compressed); }
+        const c = document.querySelector(`#tr-${levelIdx}-${ti} .task-cam-btn`);
+        if (c) c.classList.add('has-photo');
+        showToast('📸 Evidence captured');
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+function compressImg(dataUrl, maxDim, quality, cb) {
+  const img = new Image();
+  img.onload = () => {
+    let w=img.width, h=img.height;
+    if (w>maxDim||h>maxDim) { if(w>h){h=Math.round(h*maxDim/w);w=maxDim}else{w=Math.round(w*maxDim/h);h=maxDim} }
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    cb(c.toDataURL('image/jpeg',quality));
+  };
+  img.src=dataUrl;
+}
+
+// ── LIGHTBOX ───────────────────────────────────────────
+function openLightbox(src, label) {
+  document.getElementById('lb-img').src=src;
+  document.getElementById('lb-lbl').textContent=label;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+
+// ── COMPLETE ───────────────────────────────────────────
+function completeLevel(i) {
+  state.levels[i].completed = true;
+  saveState();
+  refreshMarkers();
+  const lv = LEVELS[i], next = LEVELS[i+1];
+  document.getElementById('c-icon').textContent = lv.emoji;
+  document.getElementById('c-sub').textContent = next
+    ? `Next: ${next.emoji} ${next.name}\n${next.location}`
+    : 'You have decoded all layers.\nProceed to synthesis.';
+  document.getElementById('c-next').textContent = next ? 'Next Level →' : 'Go to Synthesis →';
+  document.getElementById('complete-overlay').classList.add('show');
+  window._cIdx = i;
+}
+function onCompleteNext() {
+  dismissComplete();
+  const next = window._cIdx + 1;
+  if (next < LEVELS.length) openLevel(next);
+  else { showScreen('synthesis'); setActiveNav('synthesis'); }
+}
+function dismissComplete() {
+  document.getElementById('complete-overlay').classList.remove('show');
+  showScreen('map'); setActiveNav('map');
+}
+
+// ── SYNTHESIS ──────────────────────────────────────────
+function renderSynthesis() {
+  const syn = state.synthesis;
+  ['1','2','3','hard'].forEach(k => {
+    const el = document.getElementById('syn-' + k);
+    if (el) el.value = syn['s'+k] || syn[k] || '';
+  });
+  document.getElementById('st-tasks').textContent = state.levels.reduce((a,l)=>a+l.tasks.filter(Boolean).length,0);
+  document.getElementById('st-levels').textContent = state.levels.filter(l=>l.completed).length;
+  document.getElementById('st-bonus').textContent = state.levels.reduce((a,l)=>a+l.bonus.filter(Boolean).length,0);
+  document.getElementById('st-photos').textContent = state.levels.reduce((a,l)=>a+(l.taskPhotos||[]).filter(Boolean).length,0);
+}
+function saveSyn() {
+  state.synthesis = {
+    s1:document.getElementById('syn-1').value,
+    s2:document.getElementById('syn-2').value,
+    s3:document.getElementById('syn-3').value,
+    hard:document.getElementById('syn-hard').value,
+  };
+  saveState();
+}
+
+// ── TOAST ──────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+// ── INIT ───────────────────────────────────────────────
+loadState();
+if (state.started) {
+  document.getElementById('bottom-nav').style.display='flex';
+  showScreen('map');
+} else {
+  document.getElementById('screen-splash').classList.add('active');
+}
+</script>
+<script>
+  // Register Service Worker for offline support
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(registration => {
+          console.log('ServiceWorker registered successfully with scope: ', registration.scope);
+        })
+        .catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+    });
+  }
+</script>
+</body>
+</html>
